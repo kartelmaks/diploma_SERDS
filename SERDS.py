@@ -1,28 +1,69 @@
 import numpy as np
-import pandas as pd
 import scipy as sp
-from scipy.optimize import nnls
 
 
 class SERDS:
-    def spline(self, x, y):
-        z = np.polyfit(x, y, 10)
-        f = np.poly1d(z)
 
-        x_new = np.linspace(0, 1340, 1340)
-        y_new = f(x_new)
-        return (y_new)
+    def __init__(self, spectrs,  label, shift):
+        self.shift = shift
+        self.spectrs = spectrs
+        self.label = label
 
-    def extrapolate(self, spectrs):
+        self.N = len(spectrs[0])
+
+
+    def get_reconstr_spectrs(self):
+        R = np.hstack((self.spectrs[0], self.spectrs[1]))
+        R = np.hstack((R, self.spectrs[2]))
+
+        H = self.H_matrix()
+        end, d = sp.optimize.nnls(H, R)
+
+        raman = (end[0:self.N])
+        fluor = (end[self.N: 2*self.N])
+
+        return raman, fluor
+
+
+    def H_matrix(self):
+
+        dr, df = self.intens_coeff(self.spectrs)
+        m = len(self.spectrs)
+
+        I_arr_ = list()
+        E_arr_ = list()
+
+        for i in range(m):
+            E_ = np.diag(df[i])
+            E_arr_.append(E_)
+
+        for r in range(m):
+            I_ = np.eye(1340, 1340, self.shift[r])
+            I_arr_.append(I_)
+
+        H1 = I_arr_[0]
+        for i in range(m - 1):
+            H1 = np.vstack((H1, I_arr_[i + 1] * dr[i + 1]))
+
+        H2 = E_arr_[0]
+        for i in range(m - 1):
+            H2 = np.vstack((H2, E_arr_[i + 1]))
+
+        H_ = np.hstack((H1, H2))
+        return H_
+
+
+    def intens_coeff(self, spectrs):
+
         sto1 = np.array([[list(range(100))]])
         sto1 = sto1[0, 0, :]
-        sto2 = np.array([[list(range(1240, 1340))]])  # винести
+        sto2 = np.array([[list(range(self.N - 100, self.N))]])
         sto2 = sto2[0, 0, :]
 
         Maximums = list()
         Minimums = list()
-        for i in range(3):
-            min_arr = np.array(sp.signal.argrelextrema(spectrs[i], np.less))[0]
+        for j in range(3):
+            min_arr = np.array(sp.signal.argrelextrema(spectrs[j], np.less))[0]
             L = list()
             for i in range(sto1.shape[0]):
                 L.append(sto1[i])
@@ -36,58 +77,35 @@ class SERDS:
         for i in range(3):
             Maximums.append(sp.signal.argrelextrema(spectrs[i], np.greater))
 
-        min_list_0 = spectrs[0][Minimums[0]]
-        min_list_1 = spectrs[1][Minimums[1]]
-        min_list_2 = spectrs[2][Minimums[2]]
+        list_min = [0,0,0]
+        list_min[0] = spectrs[0][Minimums[0]]
+        list_min[1] = spectrs[1][Minimums[1]]
+        list_min[2] = spectrs[2][Minimums[2]]
 
-        max_list_0 = spectrs[0][Maximums[0][0]]
-        max_list_1 = spectrs[1][Maximums[1][0]]
-        max_list_2 = spectrs[2][Maximums[2][0]]
+        list_max = [0, 0, 0]
+        list_max[0] = spectrs[0][Maximums[0][0]]
+        list_max[1] = spectrs[1][Maximums[1][0]]
+        list_max[2] = spectrs[2][Maximums[2][0]]
 
-        l_min_1 = spline(Minimums[0], min_list_0)
-        l_min_2 = spline(Minimums[1], min_list_1)
-        l_min_3 = spline(Minimums[2], min_list_2)
+        spline_min = list()
+        spline_min[0] = self.spline(Minimums[0], list_min[0])
+        spline_min[1] = self.spline(Minimums[1], list_min[1])
+        spline_min[2] = self.spline(Minimums[2], list_min[2])
 
-        dr12 = sum(max_list_1) / sum(max_list_0)
-        dr13 = sum(max_list_2) / sum(max_list_0)
+        dr12 = sum(list_max[1]) / sum(list_max[0])
+        dr13 = sum(list_max[2]) / sum(list_max[0])
         dr = [1, dr12, dr13]
 
-        df12 = l_min_2 / l_min_1
-        df13 = l_min_3 / l_min_1
-        df = [(np.zeros(N) + 1), df12, df13]
+        df12 = spline_min[1] / spline_min[0]
+        df13 = spline_min[2] / spline_min[0]
+        df = [(np.zeros(self.N) + 1), df12, df13]
         return dr, df
 
-    def H_matrix(self):
-        dr, df = extrapolate(spectrs)
-        m = 3
-        shift = [0, -7, -20]
-        ################
-        I_arr_ = list()
-        E_arr_ = list()
 
-        # E_0 = np.eye(N, N, 0)
-        for i in range(m):
-            E_ = np.diag(df[i])
-            E_arr_.append(E_)
+    def spline(self, x, y):
+        z = np.polyfit(x, y, 10)
+        f = np.poly1d(z)
 
-        for r in range(m):
-            I_ = np.eye(1340, 1340, shift[r])
-            I_arr_.append(I_)
-
-        H1 = I_arr_[0]
-        for i in range(m - 1):
-            H1 = np.vstack((H1, I_arr_[i + 1] * dr[i + 1]))
-
-        H2 = E_arr_[0]
-        for i in range(m - 1):
-            H2 = np.vstack((H2, E_arr_[i + 1]))
-
-        H_ = np.hstack((H1, H2))
-        ################
-
-        R_ = np.hstack((f[0], f[1]))
-        R_ = np.hstack((R_, f[2]))
-        ##########################################################
-        end, d = nnls(H_, R_)
-        Raman.append(end[0:N])
-        Fluor.append(end[N:2 * N])
+        x_new = np.linspace(0, self.N, self.N)
+        y_new = f(x_new)
+        return (y_new)
