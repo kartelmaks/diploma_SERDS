@@ -1,14 +1,14 @@
 import numpy as np
 import scipy as sp
+from scipy.optimize import nnls
+from scipy.signal import argrelextrema
 
 
 class SERDS:
 
-    def __init__(self, spectrs,  label, shift):
+    def __init__(self, spectrs, shift):
         self.shift = shift
         self.spectrs = spectrs
-        self.label = label
-
         self.N = len(spectrs[0])
 
 
@@ -17,7 +17,7 @@ class SERDS:
         R = np.hstack((R, self.spectrs[2]))
 
         H = self.H_matrix()
-        end, d = sp.optimize.nnls(H, R)
+        end, d = nnls(H, R)
 
         raman = (end[0:self.N])
         fluor = (end[self.N: 2*self.N])
@@ -63,7 +63,7 @@ class SERDS:
         Maximums = list()
         Minimums = list()
         for j in range(3):
-            min_arr = np.array(sp.signal.argrelextrema(spectrs[j], np.less))[0]
+            min_arr = np.array(argrelextrema(spectrs[j], np.less))[0]
             L = list()
             for i in range(sto1.shape[0]):
                 L.append(sto1[i])
@@ -75,7 +75,7 @@ class SERDS:
             Minimums.append(L)
 
         for i in range(3):
-            Maximums.append(sp.signal.argrelextrema(spectrs[i], np.greater))
+            Maximums.append(argrelextrema(spectrs[i], np.greater))
 
         list_min = [0,0,0]
         list_min[0] = spectrs[0][Minimums[0]]
@@ -87,7 +87,7 @@ class SERDS:
         list_max[1] = spectrs[1][Maximums[1][0]]
         list_max[2] = spectrs[2][Maximums[2][0]]
 
-        spline_min = list()
+        spline_min = [0,0,0]
         spline_min[0] = self.spline(Minimums[0], list_min[0])
         spline_min[1] = self.spline(Minimums[1], list_min[1])
         spline_min[2] = self.spline(Minimums[2], list_min[2])
