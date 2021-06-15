@@ -1,5 +1,4 @@
 import numpy as np
-import scipy as sp
 from scipy.optimize import nnls
 from scipy.signal import argrelextrema
 
@@ -11,7 +10,6 @@ class SERDS:
         self.spectrs = spectrs
         self.N = len(spectrs[0])
 
-
     def get_reconstr_spectrs(self):
         R = np.hstack((self.spectrs[0], self.spectrs[1]))
         R = np.hstack((R, self.spectrs[2]))
@@ -20,10 +18,9 @@ class SERDS:
         end, d = nnls(H, R)
 
         raman = (end[0:self.N])
-        fluor = (end[self.N: 2*self.N])
+        fluor = (end[self.N: 2 * self.N])
 
         return raman, fluor
-
 
     def H_matrix(self):
 
@@ -52,7 +49,6 @@ class SERDS:
         H_ = np.hstack((H1, H2))
         return H_
 
-
     def intens_coeff(self, spectrs):
 
         sto1 = np.array([[list(range(100))]])
@@ -77,7 +73,7 @@ class SERDS:
         for i in range(3):
             Maximums.append(argrelextrema(spectrs[i], np.greater))
 
-        list_min = [0,0,0]
+        list_min = [0, 0, 0]
         list_min[0] = spectrs[0][Minimums[0]]
         list_min[1] = spectrs[1][Minimums[1]]
         list_min[2] = spectrs[2][Minimums[2]]
@@ -87,7 +83,7 @@ class SERDS:
         list_max[1] = spectrs[1][Maximums[1][0]]
         list_max[2] = spectrs[2][Maximums[2][0]]
 
-        spline_min = [0,0,0]
+        spline_min = [0, 0, 0]
         spline_min[0] = self.spline(Minimums[0], list_min[0])
         spline_min[1] = self.spline(Minimums[1], list_min[1])
         spline_min[2] = self.spline(Minimums[2], list_min[2])
@@ -101,11 +97,10 @@ class SERDS:
         df = [(np.zeros(self.N) + 1), df12, df13]
         return dr, df
 
-
     def spline(self, x, y):
         z = np.polyfit(x, y, 10)
         f = np.poly1d(z)
 
         x_new = np.linspace(0, self.N, self.N)
         y_new = f(x_new)
-        return (y_new)
+        return y_new
