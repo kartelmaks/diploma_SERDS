@@ -12,6 +12,6 @@ serds = SERDS([X1, X2, X3], [0, -6, -12])
 
 raman, fluor = serds.get_reconstr_spectrs()
 
-Plot.plot_all([X1, X2, X3], raman, fluor, X_axes)
+Plot.plot_all([X1, X2, X3], raman, fluor, X_axes, legend = ['784 нм', '785 нм', '786 нм'])
 
 Plot.plot_spectrs([X1, X2, X3], X_axes)
